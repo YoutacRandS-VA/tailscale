@@ -64,6 +64,7 @@ var handler = map[string]localAPIHandler{
 	"file-put/": (*Handler).serveFilePut,
 	"files/":    (*Handler).serveFiles,
 	"profiles/": (*Handler).serveProfiles,
+	"web/":      (*Handler).serveWeb,
 
 	// The other /localapi/v0/NAME handlers are exact matches and contain only NAME
 	// without a trailing slash:
@@ -2051,6 +2052,34 @@ func (h *Handler) serveQueryFeature(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(resp.StatusCode)
 	if _, err := io.Copy(w, resp.Body); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *Handler) serveWeb(w http.ResponseWriter, r *http.Request) {
+	if !h.PermitWrite {
+		http.Error(w, "access denied", http.StatusForbidden)
+		return
+	}
+	if r.Method != httpm.POST {
+		http.Error(w, "use POST", http.StatusMethodNotAllowed)
+		return
+	}
+	switch r.URL.Path {
+	case "/localapi/v0/web/start":
+		_, err := h.b.WebOrInit()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		return
+	case "/localapi/v0/web/stop":
+		h.b.WebShutdown()
+		w.WriteHeader(http.StatusOK)
+		return
+	default:
+		http.Error(w, "invalid action", http.StatusBadRequest)
 		return
 	}
 }

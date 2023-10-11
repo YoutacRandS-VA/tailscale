@@ -30,13 +30,16 @@ import (
 	"tailscale.com/licenses"
 	"tailscale.com/net/netutil"
 	"tailscale.com/tailcfg"
+	"tailscale.com/types/logger"
 	"tailscale.com/util/httpm"
 	"tailscale.com/version/distro"
 )
 
 // Server is the backend server for a Tailscale web client.
 type Server struct {
-	lc *tailscale.LocalClient
+	logf           logger.Logf
+	lc             *tailscale.LocalClient
+	doNoiseRequest func(req *http.Request) (*http.Response, error) // non-empty when tsDebugMode is "full"
 
 	devMode     bool
 	tsDebugMode string
@@ -44,8 +47,9 @@ type Server struct {
 	cgiMode    bool
 	pathPrefix string
 
-	assetsHandler http.Handler // serves frontend assets
 	apiHandler    http.Handler // serves api endpoints; csrf-protected
+	assetsHandler http.Handler // serves frontend assets
+	assetsCleanup func()       // called from Server.Shutdown
 
 	// browserSessions is an in-memory cache of browser sessions for the
 	// full management web client, which is only accessible over Tailscale.
@@ -122,20 +126,41 @@ type ServerOpts struct {
 	// LocalClient is the tailscale.LocalClient to use for this web server.
 	// If nil, a new one will be created.
 	LocalClient *tailscale.LocalClient
+
+	// DoNoiseRequest should be provided as a function that can complete
+	// a request over the noise connection to the control server.
+	// DoNoiseRequest is required when the web client is run in full
+	// management mode (when LoginOnly is false) from the tailscale daemon.
+	DoNoiseRequest func(req *http.Request) (*http.Response, error)
+	Logf           logger.Logf
 }
 
 // NewServer constructs a new Tailscale web client server.
-func NewServer(opts ServerOpts) (s *Server, cleanup func()) {
+// If err is empty, s is always non-nil.
+// ctx is only required to live the duration of the NewServer call,
+// and not the lifespan of the web server.
+func NewServer(opts ServerOpts) (s *Server, err error) {
 	if opts.LocalClient == nil {
 		opts.LocalClient = &tailscale.LocalClient{}
 	}
 	s = &Server{
-		devMode:    opts.DevMode,
-		lc:         opts.LocalClient,
-		pathPrefix: opts.PathPrefix,
+		logf:           opts.Logf,
+		devMode:        opts.DevMode,
+		lc:             opts.LocalClient,
+		pathPrefix:     opts.PathPrefix,
+		doNoiseRequest: opts.DoNoiseRequest,
+	}
+	if s.logf == nil {
+		s.logf = log.Printf
 	}
 	s.tsDebugMode = s.debugMode()
-	s.assetsHandler, cleanup = assetsHandler(opts.DevMode)
+	if s.tsDebugMode == "full" && s.doNoiseRequest == nil {
+		// DoNoiseRequest handler required to run full management client.
+		return nil, errors.New("doNoiseRequest required to run web client")
+	}
+	s.assetsHandler, s.assetsCleanup = assetsHandler(opts.DevMode)
+
+	var metric string // clientmetric to report on startup
 
 	// Create handler for "/api" requests with CSRF protection.
 	// We don't require secure cookies, since the web client is regularly used
@@ -147,13 +172,26 @@ func NewServer(opts ServerOpts) (s *Server, cleanup func()) {
 		// For the login client, we don't serve the full web client API,
 		// only the login endpoints.
 		s.apiHandler = csrfProtect(http.HandlerFunc(s.serveLoginAPI))
-		s.lc.IncrementCounter(context.Background(), "web_login_client_initialization", 1)
+		metric = "web_login_client_initialization"
 	} else {
 		s.apiHandler = csrfProtect(http.HandlerFunc(s.serveAPI))
-		s.lc.IncrementCounter(context.Background(), "web_client_initialization", 1)
+		metric = "web_client_initialization"
 	}
 
-	return s, cleanup
+	// Report metric in separate go routine with 5 second timeout.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	go func() {
+		defer cancel()
+		s.lc.IncrementCounter(ctx, metric, 1)
+	}()
+
+	return s, nil
+}
+
+func (s *Server) Shutdown() {
+	if s.assetsCleanup != nil {
+		s.assetsCleanup()
+	}
 }
 
 // debugMode returns the debug mode the web client is being run in.
@@ -485,7 +523,7 @@ func (s *Server) servePostNodeUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	mp.Prefs.WantRunning = true
 	mp.Prefs.AdvertiseRoutes = routes
-	log.Printf("Doing edit: %v", mp.Pretty())
+	s.logf("Doing edit: %v", mp.Pretty())
 
 	if _, err := s.lc.EditPrefs(r.Context(), mp); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -501,9 +539,9 @@ func (s *Server) servePostNodeUpdate(w http.ResponseWriter, r *http.Request) {
 	if postData.ForceLogout {
 		logout = true
 	}
-	log.Printf("tailscaleUp(reauth=%v, logout=%v) ...", reauth, logout)
+	s.logf("tailscaleUp(reauth=%v, logout=%v) ...", reauth, logout)
 	url, err := s.tailscaleUp(r.Context(), st, postData)
-	log.Printf("tailscaleUp = (URL %v, %v)", url != "", err)
+	s.logf("tailscaleUp = (URL %v, %v)", url != "", err)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(mi{"error": err.Error()})
