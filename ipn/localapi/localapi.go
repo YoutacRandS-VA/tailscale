@@ -2112,7 +2112,6 @@ func (h *Handler) serveDebugWebClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(resp.StatusCode)
 }
 
 func defBool(a string, def bool) bool {

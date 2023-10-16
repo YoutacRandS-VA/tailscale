@@ -150,15 +150,15 @@ func TestGetTailscaleBrowserSession(t *testing.T) {
 	tags := views.SliceOf([]string{"tag:server"})
 	tailnetNodes := map[string]*apitype.WhoIsResponse{
 		userANodeIP: {
-			Node:        &tailcfg.Node{StableID: "Node1"},
+			Node:        &tailcfg.Node{ID: 1},
 			UserProfile: userA,
 		},
 		userBNodeIP: {
-			Node:        &tailcfg.Node{StableID: "Node2"},
+			Node:        &tailcfg.Node{ID: 2},
 			UserProfile: userB,
 		},
 		taggedNodeIP: {
-			Node: &tailcfg.Node{StableID: "Node3", Tags: tags.AsSlice()},
+			Node: &tailcfg.Node{ID: 3, Tags: tags.AsSlice()},
 		},
 	}
 
@@ -205,21 +205,24 @@ func TestGetTailscaleBrowserSession(t *testing.T) {
 	// Add some browser sessions to cache state.
 	userASession := &browserSession{
 		ID:            "cookie1",
-		SrcNode:       "Node1",
+		SrcNode:       1,
 		SrcUser:       userA.ID,
-		Authenticated: time.Time{}, // not yet authenticated
+		Created:       time.Now(),
+		Authenticated: false, // not yet authenticated
 	}
 	userBSession := &browserSession{
 		ID:            "cookie2",
-		SrcNode:       "Node2",
+		SrcNode:       2,
 		SrcUser:       userB.ID,
-		Authenticated: time.Now().Add(-2 * sessionCookieExpiry), // expired
+		Created:       time.Now().Add(-2 * sessionCookieExpiry),
+		Authenticated: true, // expired
 	}
 	userASessionAuthorized := &browserSession{
 		ID:            "cookie3",
-		SrcNode:       "Node1",
+		SrcNode:       1,
 		SrcUser:       userA.ID,
-		Authenticated: time.Now(), // authenticated and not expired
+		Created:       time.Now(),
+		Authenticated: true, // authenticated and not expired
 	}
 	s.browserSessions.Store(userASession.ID, userASession)
 	s.browserSessions.Store(userBSession.ID, userBSession)
@@ -312,7 +315,7 @@ func TestGetTailscaleBrowserSession(t *testing.T) {
 			if tt.cookie != "" {
 				r.AddCookie(&http.Cookie{Name: sessionCookieName, Value: tt.cookie})
 			}
-			session, err := s.getTailscaleBrowserSession(r)
+			session, _, err := s.getTailscaleBrowserSession(r)
 			if !errors.Is(err, tt.wantError) {
 				t.Errorf("wrong error; want=%v, got=%v", tt.wantError, err)
 			}
