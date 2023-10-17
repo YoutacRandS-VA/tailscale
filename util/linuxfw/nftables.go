@@ -129,6 +129,29 @@ func detectNetfilter() (int, error) {
 		}
 		validRules += len(rules)
 	}
+	if validRules > 0 {
+		// We have valid rules, so we can use nftables.
+		return validRules, nil
+	}
+
+	// We could not find any valid rules, so try creating a dummy postrouting
+	// chain. Emperically, we have noticed that on some devices there is partial
+	// nftables support and the kernel rejects some chains that are valid on
+	// other devices. This is a workaround to detect that case.
+	nft, err := newNfTablesRunner(logger.Discard)
+	if err != nil {
+		return 0, FWModeNotSupportedError{
+			Mode: FirewallModeNfTables,
+			Err:  fmt.Errorf("cannot create nftables runner: %w", err),
+		}
+	}
+	err = nft.createDummyPostroutingChains()
+	if err != nil {
+		return 0, FWModeNotSupportedError{
+			Mode: FirewallModeNfTables,
+			Err:  err,
+		}
+	}
 	return validRules, nil
 }
 
