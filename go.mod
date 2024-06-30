@@ -30,7 +30,7 @@ require (
 	github.com/godbus/dbus/v5 v5.1.1-0.20230522191255-76236955d466
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 	github.com/golangci/golangci-lint v1.52.2
-	github.com/google/go-cmp v0.5.9
+	github.com/google/go-cmp v0.6.0
 	github.com/google/go-containerregistry v0.16.1
 	github.com/google/nftables v0.1.1-0.20230115205135-9aa6fdf5a28c
 	github.com/google/uuid v1.3.1
@@ -76,14 +76,14 @@ require (
 	go.uber.org/zap v1.26.0
 	go4.org/mem v0.0.0-20220726221520-4f986261bf13
 	go4.org/netipx v0.0.0-20230824141953-6213f710f925
-	golang.org/x/crypto v0.14.0
+	golang.org/x/crypto v0.16.0
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
 	golang.org/x/mod v0.12.0
-	golang.org/x/net v0.17.0
+	golang.org/x/net v0.19.0
 	golang.org/x/oauth2 v0.12.0
 	golang.org/x/sync v0.3.0
-	golang.org/x/sys v0.13.0
-	golang.org/x/term v0.13.0
+	golang.org/x/sys v0.15.0
+	golang.org/x/term v0.15.0
 	golang.org/x/time v0.3.0
 	golang.org/x/tools v0.13.0
 	golang.zx2c4.com/wintun v0.0.0-20230126152724-0fa3db229ce2
@@ -104,6 +104,7 @@ require (
 
 require (
 	github.com/Microsoft/go-winio v0.6.1 // indirect
+	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/google/gnostic-models v0.6.9-0.20230804172637-c7be7c783f49 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
 )
@@ -126,7 +127,6 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
 	github.com/OpenPeeDeeP/depguard v1.1.1 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230923063757-afb1ddc0824c // indirect
-	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/alexkohler/prealloc v1.0.0 // indirect
 	github.com/alingse/asasalint v0.0.11 // indirect
 	github.com/ashanbrown/forbidigo v1.5.1 // indirect
@@ -181,8 +181,8 @@ require (
 	github.com/fzipp/gocyclo v0.6.0 // indirect
 	github.com/go-critic/go-critic v0.8.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
-	github.com/go-git/go-billy/v5 v5.4.1 // indirect
-	github.com/go-git/go-git/v5 v5.8.1 // indirect
+	github.com/go-git/go-billy/v5 v5.5.0 // indirect
+	github.com/go-git/go-git/v5 v5.11.0 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-openapi/jsonpointer v0.20.0 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
@@ -343,7 +343,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/image v0.12.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
